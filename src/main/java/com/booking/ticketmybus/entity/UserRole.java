@@ -1,4 +1,7 @@
 package com.booking.ticketmybus.entity;
 
-public class UserRole {
+public enum UserRole {
+    ADMIN,
+    USER,
+    VENDOR
 }

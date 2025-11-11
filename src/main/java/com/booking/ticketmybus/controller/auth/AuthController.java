@@ -1,32 +1,81 @@
-package com.booking.ticketmybus.controller.vendor;
+package com.booking.ticketmybus.controller.auth;
 
-
-import com.booking.ticketmybus.dto.shared.UserDTO;
-import com.booking.ticketmybus.dto.vendor.request.VendorRegisterRequest;
-import com.booking.ticketmybus.entity.User;
-import com.booking.ticketmybus.service.vendor.VendorService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.booking.ticketmybus.dto.shared.LoginRequestDTO;
+import com.booking.ticketmybus.dto.shared.LoginResponseDTO;
+import com.booking.ticketmybus.dto.shared.RegisterResponseDTO;
+import com.booking.ticketmybus.dto.shared.UserRegisterDTO;
+import com.booking.ticketmybus.service.AuthService;
+import com.booking.ticketmybus.service.shared.AuthServiceImpl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/vendor")
+@RequestMapping("/api")
 public class AuthController {
 
-    @Autowired
-    private VendorService vendorService;
+
+    private final AuthService authService;
+
+    AuthController(AuthServiceImpl authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerVendor(@RequestBody VendorRegisterRequest request) {
+    public ResponseEntity<?> register(@RequestBody UserRegisterDTO userRegisterDTO) {
         try {
-            User vendor = vendorService.registerVendor(request);
-            return ResponseEntity.ok("Vendor registered successfully with ID: " + vendor.getId());
+
+            var createdUser = authService.register(userRegisterDTO);
+
+
+            RegisterResponseDTO registerResponseDTO = new RegisterResponseDTO(
+                    createdUser.getName(),
+                    createdUser.getEmail(),
+                    "User registered successfully",
+                    true
+            );
+            return ResponseEntity.ok(registerResponseDTO);
+
+        } catch (RuntimeException e) {
+            RegisterResponseDTO errorResponse = new RegisterResponseDTO(
+                    null,
+                    null,
+                    e.getMessage(),
+                    false
+            );
+            return ResponseEntity.badRequest().body(errorResponse);
+
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            RegisterResponseDTO errorResponse = new RegisterResponseDTO(
+                    null,
+                    null,
+                    "Registration failed due to server error",
+                    false
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequestDTO) {
+        try {
+            return ResponseEntity.ok(authService.login(loginRequestDTO));
+        } catch (RuntimeException e) {
+            LoginResponseDTO errorResponse = new LoginResponseDTO();
+            errorResponse.setErrorMsg(e.getMessage());
+            errorResponse.setSuccess(false);
+            HttpStatus status = determineHttpStatus(e.getMessage());
+            return ResponseEntity.status(status).body(errorResponse);
+        }
+    }
 
+    private HttpStatus determineHttpStatus(String errorMessage) {
+        if (errorMessage.contains("not registered") || errorMessage.contains("Invalid password")) {
+            return HttpStatus.UNAUTHORIZED; // 401
+        } else if (errorMessage.contains("not active") || errorMessage.contains("suspended")) {
+            return HttpStatus.FORBIDDEN; // 403
+        } else {
+            return HttpStatus.BAD_REQUEST; // 400
+        }
+    }
 }

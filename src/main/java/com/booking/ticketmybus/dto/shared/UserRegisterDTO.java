@@ -1,4 +1,4 @@
-package com.booking.ticketmybus.dto;
+package com.booking.ticketmybus.dto.shared;
 
 public class UserRegisterDTO {
     private String name;
@@ -10,7 +10,6 @@ public class UserRegisterDTO {
 
 
 
-    9999999999999999999999999999999999999956
     public String getName() {
         return name;
     }
